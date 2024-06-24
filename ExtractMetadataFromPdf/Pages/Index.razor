@@ -10,10 +10,23 @@
 <h1>Extract PDF Content</h1>
 
 <InputFile OnChange="HandleFileSelected" accept=".pdf" />
-@if (!string.IsNullOrEmpty(pdfContent))
+@if (csvData.Count > 0)
 {
-    <h3>PDF Content:</h3>
-    <pre>@pdfContent</pre>
+    <h3>CSV Line Data:</h3>
+    <ul>
+        @foreach (var entry in csvData)
+        {
+            <li>
+                <strong>Line @entry.Key:</strong>
+                <ul>
+                    @for (int i = 0; i < entry.Value.Length; i++)
+                    {
+                        <li>Position @i: @entry.Value[i]</li>
+                    }
+                </ul>
+            </li>
+        }
+    </ul>
 }
 else if (loading)
 {
@@ -25,10 +38,10 @@ else if (error != "")
 }
 
 @code {
-    private string pdfContent = "";
     private bool loading = true;
     private string error = "";
-    private IBrowserFile ?file;  // Variable global para almacenar el archivo seleccionado
+    private IBrowserFile? file;  // Variable global para almacenar el archivo seleccionado
+    private Dictionary<int, string[]> csvData = new Dictionary<int, string[]>();  // Dictionary to store line positions and array of data
 
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
@@ -74,7 +87,6 @@ else if (error != "")
         }
     }
 
-    
     // Método asíncrono para procesar el archivo PDF y guardar el contenido en un archivo CSV
     private async Task FileProcess(string filePath)
     {
@@ -89,17 +101,20 @@ else if (error != "")
 
                 using (var csvWriter = new StreamWriter(csvFilePath))
                 {
+                    int lineNumber = 1;
                     for (int i = 1; i <= pdfDocument.GetNumberOfPages(); ++i)
                     {
                         var page = pdfDocument.GetPage(i);
                         var text = PdfTextExtractor.GetTextFromPage(page);
-                       // Console.WriteLine($"Page {i} Text: {text}");
                         var lines = text.Split('\n');
                         foreach (var line in lines)
                         {
-                            var csvLine = string.Join(",", line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries));
+                            var csvLineArray = line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                            var csvLine = string.Join(",", csvLineArray);
                             csvWriter.WriteLine(csvLine);
-                            Console.WriteLine($"CSV Line: {csvLine}");
+                            csvData.Add(lineNumber, csvLineArray);  // Add line position and content array to the dictionary
+                            Console.WriteLine($"CSV Line {lineNumber}: {csvLine}");
+                            lineNumber++;
                         }
                     }
                 }
