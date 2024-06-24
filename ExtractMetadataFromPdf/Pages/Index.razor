@@ -1,0 +1,116 @@
+﻿@page "/"
+@using System
+@using Microsoft.AspNetCore.Components.Forms
+@using iText.Kernel.Pdf
+@using iText.Kernel.Pdf.Canvas.Parser
+@using iText.Kernel.Pdf.Canvas.Parser.Listener
+
+<PageTitle>Extract PDF Content</PageTitle>
+
+<h1>Extract PDF Content</h1>
+
+<InputFile OnChange="HandleFileSelected" accept=".pdf" />
+@if (!string.IsNullOrEmpty(pdfContent))
+{
+    <h3>PDF Content:</h3>
+    <pre>@pdfContent</pre>
+}
+else if (loading)
+{
+    <p>Loading...</p>
+}
+else if (error != "")
+{
+    <p>Error: @error</p>
+}
+
+@code {
+    private string pdfContent = "";
+    private bool loading = true;
+    private string error = "";
+    private IBrowserFile ?file;  // Variable global para almacenar el archivo seleccionado
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            error = "";
+            loading = true;
+            file = e.File;  // Asignar el archivo seleccionado a la variable global
+            var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Uploads");
+            var filePath = Path.Combine(uploadPath, file.Name);
+
+            // Crear el directorio si no existe
+            if (!Directory.Exists(uploadPath))
+            {
+                Directory.CreateDirectory(uploadPath);
+            }
+
+            await using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.OpenReadStream().CopyToAsync(stream);
+            }
+
+            // Verificar que el archivo se ha guardado
+            if (File.Exists(filePath))
+            {
+                Console.WriteLine($"El archivo se guardó correctamente en: {filePath}");
+                await FileProcess(filePath);
+                Console.WriteLine($"PROCESO OK....");
+            }
+            else
+            {
+                Console.WriteLine($"Error: El archivo no se pudo guardar en: {filePath}");
+            }
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            Console.WriteLine($"Error: {error}");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    
+    // Método asíncrono para procesar el archivo PDF y guardar el contenido en un archivo CSV
+    private async Task FileProcess(string filePath)
+    {
+        await Task.Run(() =>
+        {
+            try
+            {
+                var pdfDocument = new PdfDocument(new PdfReader(filePath));
+                var strategy = new LocationTextExtractionStrategy();
+                var csvFilePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Uploads", "output.csv");
+                Console.WriteLine($"CSV File Path: {csvFilePath}");
+
+                using (var csvWriter = new StreamWriter(csvFilePath))
+                {
+                    for (int i = 1; i <= pdfDocument.GetNumberOfPages(); ++i)
+                    {
+                        var page = pdfDocument.GetPage(i);
+                        var text = PdfTextExtractor.GetTextFromPage(page);
+                       // Console.WriteLine($"Page {i} Text: {text}");
+                        var lines = text.Split('\n');
+                        foreach (var line in lines)
+                        {
+                            var csvLine = string.Join(",", line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries));
+                            csvWriter.WriteLine(csvLine);
+                            Console.WriteLine($"CSV Line: {csvLine}");
+                        }
+                    }
+                }
+
+                Console.WriteLine($"Contenido guardado en: {csvFilePath}");
+            }
+            catch (Exception ex)
+            {
+                error = $"Error al procesar el archivo: {ex.Message}";
+                Console.WriteLine($"Error: {error}");
+            }
+        });
+    }
+}
