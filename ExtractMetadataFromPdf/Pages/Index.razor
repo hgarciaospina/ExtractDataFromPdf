@@ -110,6 +110,11 @@ else if (error != "")
                         foreach (var line in lines)
                         {
                             var csvLineArray = line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                            if (csvLineArray.Length == 1 && csvLineArray[0] == ":")
+                            {
+                                continue; // Skip lines that only contain a colon
+                            }
+
                             var csvLine = string.Join(",", csvLineArray);
                             csvWriter.WriteLine(csvLine);
                             csvData.Add(lineNumber, csvLineArray);  // Add line position and content array to the dictionary
