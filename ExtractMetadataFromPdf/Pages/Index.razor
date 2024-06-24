@@ -109,10 +109,16 @@ else if (error != "")
                         var lines = text.Split('\n');
                         foreach (var line in lines)
                         {
-                            var csvLineArray = line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-                            if (csvLineArray.Length == 1 && csvLineArray[0] == ":")
+                            var trimmedLine = line.Trim(); // Remove leading and trailing whitespace
+                            if (trimmedLine == ":")
                             {
-                                continue; // Skip lines that only contain a colon
+                                continue; // Skip lines that only contain a colon and spaces
+                            }
+
+                            var csvLineArray = trimmedLine.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                            if (csvLineArray.Length == 0)
+                            {
+                                continue; // Skip blank lines
                             }
 
                             var csvLine = string.Join(",", csvLineArray);
